@@ -1,4 +1,47 @@
-def _get_login_page(self, message=""):
+"""
+Módulo del servidor HTTP del portal cautivo.
+Maneja las peticiones HTTP y el endpoint de login.
+"""
+
+from http.server import HTTPServer, BaseHTTPRequestHandler
+from urllib.parse import parse_qs, urlparse
+import json
+import logging
+from threading import Thread
+
+
+class CaptivePortalHandler(BaseHTTPRequestHandler):
+    """Manejador de peticiones HTTP para el portal cautivo."""
+    
+    def log_message(self, format, *args):
+        """Sobrescribe el método de logging por defecto."""
+        logging.info(f"{self.address_string()} - {format % args}")
+    
+    def _set_headers(self, content_type='text/html', status_code=200):
+        """
+        Establece las cabeceras HTTP de la respuesta.
+        
+        Args:
+            content_type: Tipo de contenido MIME
+            status_code: Código de estado HTTP
+        """
+        self.send_response(status_code)
+        self.send_header('Content-type', content_type)
+        self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
+        self.send_header('Pragma', 'no-cache')
+        self.send_header('Expires', '0')
+        self.end_headers()
+    
+    def _get_client_ip(self):
+        """
+        Obtiene la dirección IP del cliente.
+        
+        Returns:
+            Dirección IP del cliente
+        """
+        return self.client_address[0]
+    
+    def _get_login_page(self, message=""):
         """
         Genera la página HTML de login.
         
@@ -147,7 +190,8 @@ def _get_login_page(self, message=""):
 </html>
         """
         return html
-def _get_success_page(self, username):
+    
+    def _get_success_page(self, username):
         """
         Genera la página HTML de éxito tras el login.
         
@@ -240,3 +284,105 @@ def _get_success_page(self, username):
 </html>
         """
         return html
+    
+    def do_GET(self):
+        """Maneja las peticiones HTTP GET."""
+        client_ip = self._get_client_ip()
+        
+        # Obtener referencias a los managers desde el servidor
+        session_manager = self.server.session_manager
+        
+        # Verificar si ya está autenticado
+        if session_manager.is_authenticated(client_ip):
+            username = session_manager.get_username_by_ip(client_ip)
+            self._set_headers()
+            self.wfile.write(self._get_success_page(username).encode())
+        else:
+            # Mostrar página de login
+            self._set_headers()
+            self.wfile.write(self._get_login_page().encode())
+    
+    def do_POST(self):
+        """Maneja las peticiones HTTP POST."""
+        client_ip = self._get_client_ip()
+        
+        # Leer el contenido del POST
+        content_length = int(self.headers['Content-Length'])
+        post_data = self.rfile.read(content_length).decode('utf-8')
+        params = parse_qs(post_data)
+        
+        # Obtener credenciales
+        username = params.get('username', [''])[0]
+        password = params.get('password', [''])[0]
+        
+        # Obtener referencias a los managers desde el servidor
+        user_manager = self.server.user_manager
+        session_manager = self.server.session_manager
+        firewall_manager = self.server.firewall_manager
+        
+        # Autenticar usuario
+        if user_manager.authenticate(username, password):
+            # Crear sesión
+            session_manager.create_session(client_ip, username)
+            
+            # Permitir acceso en el firewall
+            firewall_manager.allow_ip(client_ip)
+            
+            logging.info(f"Usuario '{username}' autenticado desde {client_ip}")
+            
+            # Mostrar página de éxito
+            self._set_headers()
+            self.wfile.write(self._get_success_page(username).encode())
+        else:
+            # Autenticación fallida
+            logging.warning(f"Intento de login fallido desde {client_ip} con usuario '{username}'")
+            
+            self._set_headers()
+            self.wfile.write(self._get_login_page("Usuario o contraseña incorrectos").encode())
+
+
+class CaptivePortalServer:
+    """Servidor HTTP del portal cautivo con soporte multihilo."""
+    
+    def __init__(self, host='0.0.0.0', port=80, user_manager=None, 
+                 session_manager=None, firewall_manager=None):
+        """
+        Inicializa el servidor del portal cautivo.
+        
+        Args:
+            host: Dirección en la que escuchar
+            port: Puerto en el que escuchar
+            user_manager: Instancia de UserManager
+            session_manager: Instancia de SessionManager
+            firewall_manager: Instancia de FirewallManager
+        """
+        self.host = host
+        self.port = port
+        self.user_manager = user_manager
+        self.session_manager = session_manager
+        self.firewall_manager = firewall_manager
+        self.server = None
+        self.server_thread = None
+    
+    def start(self):
+        """Inicia el servidor HTTP."""
+        self.server = HTTPServer((self.host, self.port), CaptivePortalHandler)
+        
+        # Adjuntar los managers al servidor para que el handler pueda acceder
+        self.server.user_manager = self.user_manager
+        self.server.session_manager = self.session_manager
+        self.server.firewall_manager = self.firewall_manager
+        
+        # Ejecutar en un hilo separado
+        self.server_thread = Thread(target=self.server.serve_forever, daemon=True)
+        self.server_thread.start()
+        
+        logging.info(f"Servidor HTTP iniciado en {self.host}:{self.port}")
+    
+    def stop(self):
+        """Detiene el servidor HTTP."""
+        if self.server:
+            self.server.shutdown()
+            self.server.server_close()
+            logging.info("Servidor HTTP detenido")
+
