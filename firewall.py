@@ -89,3 +89,75 @@ class FirewallManager:
                 self.logger.info(f"IP permitida: {ip_address}")
             
             return success
+
+    def block_ip(self, ip_address):
+        """
+        Bloquea el tráfico para una dirección IP específica.
+        
+        Args:
+            ip_address: Dirección IP a bloquear
+            
+        Returns:
+            True si se eliminó la regla exitosamente
+        """
+        with self.lock:
+            # Eliminar regla que permite forwarding desde esta IP
+            success = self._run_command([
+                "iptables", "-D", "FORWARD",
+                "-s", ip_address, "-j", "ACCEPT"
+            ])
+            
+            if success:
+                self.logger.info(f"IP bloqueada: {ip_address}")
+            
+            return success
+    
+    def clear_rules(self):
+        """
+        Limpia todas las reglas de iptables.
+        Útil para reiniciar el firewall o en caso de emergencia.
+        """
+        with self.lock:
+            # Establecer políticas por defecto a ACCEPT
+            self._run_command(["iptables", "-P", "INPUT", "ACCEPT"])
+            self._run_command(["iptables", "-P", "FORWARD", "ACCEPT"])
+            self._run_command(["iptables", "-P", "OUTPUT", "ACCEPT"])
+            
+            # Limpiar todas las reglas
+            self._run_command(["iptables", "-F"])
+            self._run_command(["iptables", "-X"])
+            
+            # Limpiar reglas de NAT
+            self._run_command(["iptables", "-t", "nat", "-F"])
+            self._run_command(["iptables", "-t", "nat", "-X"])
+            
+            self.logger.info("Reglas de firewall limpiadas")
+    
+    def list_allowed_ips(self):
+        """
+        Lista las IPs que tienen acceso permitido.
+        
+        Returns:
+            Lista de direcciones IP permitidas
+        """
+        try:
+            result = subprocess.run(
+                ["iptables", "-L", "FORWARD", "-n", "-v"],
+                capture_output=True,
+                text=True,
+                check=False
+            )
+            
+            allowed_ips = []
+            for line in result.stdout.split('\n'):
+                if 'ACCEPT' in line and 'state ESTABLISHED,RELATED' not in line:
+                    parts = line.split()
+                    if len(parts) > 7:
+                        ip = parts[7]
+                        if ip != '0.0.0.0/0' and ip != 'anywhere':
+                            allowed_ips.append(ip)
+            
+            return allowed_ips
+        except Exception as e:
+            self.logger.error(f"Error listando IPs permitidas: {e}")
+            return []
