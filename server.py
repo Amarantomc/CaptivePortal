@@ -147,3 +147,96 @@ def _get_login_page(self, message=""):
 </html>
         """
         return html
+def _get_success_page(self, username):
+        """
+        Genera la página HTML de éxito tras el login.
+        
+        Args:
+            username: Nombre del usuario autenticado
+            
+        Returns:
+            Código HTML de la página de éxito
+        """
+        html = f"""
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acceso Concedido</title>
+    <style>
+        * {{
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }}
+        body {{
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }}
+        .container {{
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+        }}
+        .icon {{
+            font-size: 80px;
+            margin-bottom: 20px;
+        }}
+        h1 {{
+            color: #11998e;
+            margin-bottom: 10px;
+        }}
+        p {{
+            color: #666;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }}
+        .username {{
+            color: #11998e;
+            font-weight: bold;
+        }}
+        .info-box {{
+            background: #f0f0f0;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+            text-align: left;
+        }}
+        .info-box strong {{
+            color: #333;
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon">✅</div>
+        <h1>¡Acceso Concedido!</h1>
+        <p>
+            Bienvenido, <span class="username">{username}</span>.<br>
+            Has iniciado sesión exitosamente en la red.
+        </p>
+        <p>
+            Ahora puedes navegar libremente por Internet.<br>
+            Tu sesión permanecerá activa durante 1 hora.
+        </p>
+        <div class="info-box">
+            <strong>Información:</strong><br>
+            • Tu IP ha sido autorizada para acceder a Internet<br>
+            • La sesión expirará automáticamente por inactividad<br>
+            • Puedes cerrar esta ventana
+        </div>
+    </div>
+</body>
+</html>
+        """
+        return html
