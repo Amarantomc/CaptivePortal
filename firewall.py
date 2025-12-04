@@ -3,29 +3,16 @@ import logging
 from threading import Lock
 
 class FirewallManager:
-    """Gestiona las reglas de iptables para el portal cautivo."""
+     
     
     def __init__(self, interface="eth0"):
-        """
-        Inicializa el gestor de firewall.
-        
-        Args:
-            interface: Interfaz de red a controlar (ej: eth0, wlan0)
-        """
+         
         self.interface = interface
         self.lock = Lock()
         self.logger = logging.getLogger(__name__)
     
     def _run_command(self, command):
-        """
-        Ejecuta un comando del sistema.
         
-        Args:
-            command: Lista con el comando y sus argumentos
-            
-        Returns:
-            True si el comando se ejecutó exitosamente, False en caso contrario
-        """
         try:
             result = subprocess.run(
                 command,
@@ -43,10 +30,7 @@ class FirewallManager:
             return False
     
     def setup_initial_rules(self):
-        """
-        Configura las reglas iniciales del firewall.
-        Bloquea todo el tráfico de forwarding por defecto.
-        """
+         
         with self.lock:
             # Permitir tráfico local
             self._run_command(["iptables", "-A", "INPUT", "-i", "lo", "-j", "ACCEPT"])
@@ -69,15 +53,7 @@ class FirewallManager:
             self.logger.info("Reglas iniciales de firewall configuradas")
     
     def allow_ip(self, ip_address):
-        """
-        Permite el tráfico para una dirección IP específica.
-        
-        Args:
-            ip_address: Dirección IP a permitir
-            
-        Returns:
-            True si se añadió la regla exitosamente
-        """
+         
         with self.lock:
             # Permitir forwarding desde esta IP
             success = self._run_command([
@@ -91,15 +67,7 @@ class FirewallManager:
             return success
 
     def block_ip(self, ip_address):
-        """
-        Bloquea el tráfico para una dirección IP específica.
-        
-        Args:
-            ip_address: Dirección IP a bloquear
-            
-        Returns:
-            True si se eliminó la regla exitosamente
-        """
+         
         with self.lock:
             # Eliminar regla que permite forwarding desde esta IP
             success = self._run_command([
@@ -113,10 +81,7 @@ class FirewallManager:
             return success
     
     def clear_rules(self):
-        """
-        Limpia todas las reglas de iptables.
-        Útil para reiniciar el firewall o en caso de emergencia.
-        """
+         
         with self.lock:
             # Establecer políticas por defecto a ACCEPT
             self._run_command(["iptables", "-P", "INPUT", "ACCEPT"])
@@ -134,12 +99,7 @@ class FirewallManager:
             self.logger.info("Reglas de firewall limpiadas")
     
     def list_allowed_ips(self):
-        """
-        Lista las IPs que tienen acceso permitido.
-        
-        Returns:
-            Lista de direcciones IP permitidas
-        """
+         
         try:
             result = subprocess.run(
                 ["iptables", "-L", "FORWARD", "-n", "-v"],
