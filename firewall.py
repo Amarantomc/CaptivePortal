@@ -33,6 +33,7 @@ class FirewallManager:
          
         with self.lock:
             # Permitir tráfico local
+            self._run_command(["sysctl", "-w", "net.ipv4.ip_forward=1"])
             self._run_command(["iptables", "-A", "INPUT", "-i", "lo", "-j", "ACCEPT"])
             
             # Permitir conexiones establecidas y relacionadas
@@ -89,13 +90,14 @@ class FirewallManager:
             self._run_command(["iptables", "-P", "OUTPUT", "ACCEPT"])
             
             # Limpiar todas las reglas
+            print("La pinga")
             self._run_command(["iptables", "-F"])
             self._run_command(["iptables", "-X"])
             
             # Limpiar reglas de NAT
             self._run_command(["iptables", "-t", "nat", "-F"])
             self._run_command(["iptables", "-t", "nat", "-X"])
-            
+            self._run_command(["sysctl", "-w", "net.ipv4.ip_forward=0"])
             self.logger.info("Reglas de firewall limpiadas")
     
     def list_allowed_ips(self):
