@@ -58,10 +58,12 @@ class FirewallManager:
         with self.lock:
             # Permitir forwarding desde esta IP
             success = self._run_command([
-                "iptables", "-I", "FORWARD", "1",
+                "iptables", "-A", "FORWARD",
                 "-s", ip_address, "-j", "ACCEPT"
             ])
             
+            #  "iptables", "-I", "FORWARD", "1",
+            #     "-s", ip_address, "-j", "ACCEPT"
             if success:
                 self.logger.info(f"IP permitida: {ip_address}")
             

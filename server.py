@@ -202,86 +202,108 @@ class CaptivePortalHandler(BaseHTTPRequestHandler):
             Código HTML de la página de éxito
         """
         html = f"""
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Acceso Concedido</title>
-    <style>
-        * {{
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }}
-        body {{
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            padding: 20px;
-        }}
-        .container {{
-            background: white;
-            padding: 40px;
-            border-radius: 10px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-            max-width: 500px;
-            width: 100%;
-            text-align: center;
-        }}
-        .icon {{
-            font-size: 80px;
-            margin-bottom: 20px;
-        }}
-        h1 {{
-            color: #11998e;
-            margin-bottom: 10px;
-        }}
-        p {{
-            color: #666;
-            margin-bottom: 20px;
-            line-height: 1.6;
-        }}
-        .username {{
-            color: #11998e;
-            font-weight: bold;
-        }}
-        .info-box {{
-            background: #f0f0f0;
-            padding: 15px;
-            border-radius: 5px;
-            margin-top: 20px;
-            text-align: left;
-        }}
-        .info-box strong {{
-            color: #333;
-        }}
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="icon">✅</div>
-        <h1>¡Acceso Concedido!</h1>
-        <p>
-            Bienvenido, <span class="username">{username}</span>.<br>
-            Has iniciado sesión exitosamente en la red.
-        </p>
-        <p>
-            Ahora puedes navegar libremente por Internet.<br>
-            Tu sesión permanecerá activa durante 1 hora.
-        </p>
-        <div class="info-box">
-            <strong>Información:</strong><br>
-            • Tu IP ha sido autorizada para acceder a Internet<br>
-            • La sesión expirará automáticamente por inactividad<br>
-            • Puedes cerrar esta ventana
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Portal Cautivo - Acceso Concedido</title>
+        <style>
+            * {{
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }}
+            body {{
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                min-height: 100vh;
+                padding: 20px;
+            }}
+            .container {{
+                background: white;
+                padding: 40px;
+                border-radius: 10px;
+                box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+                max-width: 500px;
+                width: 100%;
+                text-align: center;
+            }}
+            h1 {{
+                color: #333;
+                margin-bottom: 10px;
+            }}
+            .success-icon {{
+                font-size: 64px;
+                margin-bottom: 20px;
+            }}
+            .username {{
+                color: #11998e;
+                font-weight: 600;
+                font-size: 20px;
+                margin-bottom: 20px;
+            }}
+            .message {{
+                color: #666;
+                margin-bottom: 30px;
+                line-height: 1.6;
+            }}
+            .button {{
+                display: inline-block;
+                padding: 12px 30px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                text-decoration: none;
+                border-radius: 5px;
+                font-weight: 600;
+                transition: transform 0.2s;
+                border: none;
+                cursor: pointer;
+                font-size: 16px;
+            }}
+            .button:hover {{
+                transform: translateY(-2px);
+            }}
+            .button:active {{
+                transform: translateY(0);
+            }}
+            .logout-button {{
+                background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+                margin-top: 15px;
+            }}
+            .info {{
+                background: #e8f5e9;
+                padding: 15px;
+                border-radius: 5px;
+                margin-top: 20px;
+                font-size: 14px;
+                color: #2e7d32;
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="success-icon">✅</div>
+            <h1>¡Acceso Concedido!</h1>
+            <div class="username">Bienvenido, {username}</div>
+            <div class="message">
+                Has iniciado sesión correctamente.<br>
+                Ahora tienes acceso completo a Internet.
+            </div>
+            <a href="https://www.google.com" class="button">Ir a Internet</a>
+            <br>
+            <form method="POST" action="/logout" style="display: inline;">
+                <button type="submit" class="button logout-button">Cerrar Sesión</button>
+            </form>
+            <div class="info">
+                Tu sesión se cerrará automáticamente después de un período de inactividad.
+            </div>
         </div>
-    </div>
-</body>
-</html>
+    </body>
+    </html>
         """
         return html
     
@@ -305,6 +327,21 @@ class CaptivePortalHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         """Maneja las peticiones HTTP POST."""
         client_ip = self._get_client_ip()
+        parsed_path = urlparse(self.path)
+    
+    # Manejar logout
+        if parsed_path.path == '/logout':
+            # Terminar sesión
+            self.server.session_manager.end_session(client_ip)
+            
+            # Bloquear IP en el firewall
+            self.server.firewall_manager.block_ip(client_ip)
+            
+            # Redirigir a página de login con mensaje
+            self._set_headers()
+            self.wfile.write(self._get_login_page("Sesión cerrada correctamente").encode())
+            logging.info(f"Usuario desconectado desde {client_ip}")
+            return
         
         # Leer el contenido del POST
         content_length = int(self.headers['Content-Length'])
